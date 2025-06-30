@@ -2,7 +2,7 @@ const express = require("express");
 const cors = require("cors");
 const dotenv = require("dotenv");
 const app = express();
-const port = process.env.PORT || 3000;
+const port = process.env.PORT || 5000;
 const { MongoClient, ServerApiVersion } = require("mongodb");
 
 dotenv.config();
@@ -27,8 +27,9 @@ async function run() {
     // Connect the client to the server	(optional starting in v4.7)
     await client.connect();
 
-    const db = client.db("parcelDB"); // database name
-    const parcelCollection = db.collection("parcels"); // collection
+    // const db = client.db("parcelDB"); // database name
+    // const parcelCollection = db.collection("parcels"); // collection
+    const parcelCollection = client.db("parcelDB").collection("parcels");
 
     // //parcels api
     // app.get('/parcels', async(req, res)=> {
@@ -54,7 +55,7 @@ async function run() {
     );
   } finally {
     // Ensures that the client will close when you finish/error
-    await client.close();
+    // await client.close();
   }
 }
 run().catch(console.dir);
