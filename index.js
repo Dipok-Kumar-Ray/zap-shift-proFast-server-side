@@ -68,24 +68,27 @@ async function run() {
     });
 
     //delete parcels
-      const { ObjectId } = require('mongodb');
+    const { ObjectId } = require("mongodb");
 
-app.delete('/parcels/:id', async (req, res) => {
-  try {
-    const id = req.params.id;
-    const result = await parcelCollection.deleteOne({ _id: new ObjectId(id) });
+    app.delete("/parcels/:id", async (req, res) => {
+      try {
+        const id = req.params.id;
+        const result = await parcelCollection.deleteOne({
+          _id: new ObjectId(id),
+        });
 
-    if (result.deletedCount > 0) {
-      res.send({ success: true, message: 'Parcel deleted successfully' });
-    } else {
-      res.status(404).send({ success: false, message: 'Parcel not found' });
-    }
-  } catch (error) {
-    console.error('Delete error:', error);
-    res.status(500).send({ success: false, message: 'Internal server error' });
-  }
-});
-
+        if (result.deletedCount > 0) {
+          res.send({ success: true, message: "Parcel deleted successfully" });
+        } else {
+          res.status(404).send({ success: false, message: "Parcel not found" });
+        }
+      } catch (error) {
+        console.error("Error deleting parcel :", error);
+        res
+          .status(500)
+          .send({ success: false, message: "Failed to delete parcel" });
+      }
+    });
 
     // Send a ping to confirm a successful connection
     await client.db("admin").command({ ping: 1 });
