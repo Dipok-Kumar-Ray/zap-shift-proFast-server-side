@@ -67,6 +67,8 @@ async function run() {
       }
     });
 
+  
+
     //delete parcels
     const { ObjectId } = require("mongodb");
 
@@ -89,6 +91,24 @@ async function run() {
           .send({ success: false, message: "Failed to delete parcel" });
       }
     });
+
+
+       app.post('/create-payment-intent', async (req, res) => {
+            const amountInCents = req.body.amountInCents
+            try {
+                const paymentIntent = await stripe.paymentIntents.create({
+                    amount: amountInCents, // Amount in cents
+                    currency: 'usd',
+                    payment_method_types: ['card'],
+                });
+
+                res.json({ clientSecret: paymentIntent.client_secret });
+            } catch (error) {
+                res.status(500).json({ error: error.message });
+            }
+        });
+
+
 
     // Send a ping to confirm a successful connection
     await client.db("admin").command({ ping: 1 });
