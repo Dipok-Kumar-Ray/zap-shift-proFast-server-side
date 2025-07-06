@@ -7,6 +7,8 @@ const { MongoClient, ServerApiVersion } = require("mongodb");
 
 dotenv.config();
 
+const stripe = require("stripe")(process.env.PAYMENT_GATEWAY_KEY);
+
 //Middlaware
 app.use(cors());
 app.use(express.json());
@@ -55,6 +57,23 @@ async function run() {
       }
     });
 
+    app.get("/parcels/:id", async (req, res) => {
+      try {
+        const id = req.params.id;
+        const query = { _id: new ObjectId(id) };
+        const parcel = await parcelCollection.findOne(query);
+
+        if (!parcel) {
+          return res.status(404).send({ message: "Parcel not found" });
+        }
+
+        res.send(parcel);
+      } catch (error) {
+        console.error("Error fetching parcel by ID:", error);
+        res.status(500).send({ message: "Failed to get parcel by ID" });
+      }
+    });
+
     //POST: Create a new parcel
     app.post("/parcels", async (req, res) => {
       try {
@@ -66,8 +85,6 @@ async function run() {
         res.status(500).send({ message: "Failed to create parcel" });
       }
     });
-
-  
 
     //delete parcels
     const { ObjectId } = require("mongodb");
@@ -92,23 +109,65 @@ async function run() {
       }
     });
 
+    // POST: Record payment and update parcel status
+    app.post("/payments", async (req, res) => {
+      try {
+        const { parcelId, email, amount, paymentMethod, transactionId } =
+          req.body;
 
-       app.post('/create-payment-intent', async (req, res) => {
-            const amountInCents = req.body.amountInCents
-            try {
-                const paymentIntent = await stripe.paymentIntents.create({
-                    amount: amountInCents, // Amount in cents
-                    currency: 'usd',
-                    payment_method_types: ['card'],
-                });
+        // 1. Update parcel's payment_status
+        const updateResult = await parcelCollection.updateOne(
+          { _id: new ObjectId(parcelId) },
+          {
+            $set: {
+              payment_status: "paid",
+            },
+          }
+        );
 
-                res.json({ clientSecret: paymentIntent.client_secret });
-            } catch (error) {
-                res.status(500).json({ error: error.message });
-            }
+        if (updateResult.modifiedCount === 0) {
+          return res
+            .status(404)
+            .send({ message: "Parcel not found or already paid" });
+        }
+
+        // 2. Insert payment record
+        const paymentDoc = {
+          parcelId,
+          email,
+          amount,
+          paymentMethod,
+          transactionId,
+          paid_at_string: new Date().toISOString(),
+          paid_at: new Date(),
+        };
+
+        const paymentResult = await paymentsCollection.insertOne(paymentDoc);
+
+        res.status(201).send({
+          message: "Payment recorded and parcel marked as paid",
+          insertedId: paymentResult.insertedId,
+        });
+      } catch (error) {
+        console.error("Payment processing failed:", error);
+        res.status(500).send({ message: "Failed to record payment" });
+      }
+    });
+
+    app.post("/create-payment-intent", async (req, res) => {
+      const amountInCents = req.body.amountInCents;
+      try {
+        const paymentIntent = await stripe.paymentIntents.create({
+          amount: amountInCents, // Amount in cents
+          currency: "usd",
+          payment_method_types: ["card"],
         });
 
-
+        res.json({ clientSecret: paymentIntent.client_secret });
+      } catch (error) {
+        res.status(500).json({ error: error.message });
+      }
+    });
 
     // Send a ping to confirm a successful connection
     await client.db("admin").command({ ping: 1 });
