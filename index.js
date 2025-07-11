@@ -29,22 +29,36 @@ async function run() {
     // Connect the client to the server	(optional starting in v4.7)
     await client.connect();
 
-    // const db = client.db("parcelDB"); // database name
-    // const parcelCollection = db.collection("parcels"); // collection
+
+
+    //parcels collection
     const parcelCollection = client.db("parcelDB").collection("parcels");
-
+    //payments collection
     const paymentsCollection = client.db("parcelDB").collection("payments");
+    //users collection
+    const usersCollection = client.db('parcelDB').collection('users');
 
-    app.get("/parcels", async (req, res) => {
-      const parcels = await parcelCollection.find().toArray();
-      res.send(parcels);
-    });
+
+
+    app.post('/users', async (req, res) => {
+      const email = req.body.email;
+      const userExists = await usersCollection.findOne({email});
+      if(userExists){
+        return res.status(200).send({message: 'User already exists', inserted: false});
+      }
+      const user = req.body;
+      const result = await usersCollection.insertOne(user);
+      res.send(result);
+    })
+
 
     // parcels api
     // GET: All parcels OR parcels by user (created_by), sorted by latest
     app.get("/parcels", async (req, res) => {
       try {
         const userEmail = req.query.email;
+
+        console.log(req.headers);
 
         const query = userEmail ? { created_by: userEmail } : {};
         const options = {
